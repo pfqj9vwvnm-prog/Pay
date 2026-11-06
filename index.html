@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pay</title>
+<style>
+  :root { --bg:#f6f5f2; --ink:#1b1b1f; --muted:#6b6b73; --line:#d9d7d0; --accent:#1f3d36; --err:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16181a; --ink:#f1efe9; --muted:#9a9aa2; --line:#33363a; --accent:#8fd1b8; --err:#ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--ink);
+         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; padding:24px; }
+  main { width:100%; max-width:380px; }
+  h1 { font-size:1.6rem; margin:0 0 6px; letter-spacing:-.01em; }
+  p.sub { margin:0 0 28px; color:var(--muted); }
+  label { display:block; font-size:.9rem; color:var(--muted); margin-bottom:8px; }
+  .field { display:flex; align-items:baseline; border-bottom:2px solid var(--line); padding-bottom:6px; }
+  .field:focus-within { border-color:var(--accent); }
+  .field span { font-size:2.2rem; color:var(--muted); margin-right:6px; }
+  input { flex:1; min-width:0; border:0; background:transparent; color:var(--ink); font-size:2.2rem; outline:none; font-variant-numeric: tabular-nums; }
+  .hint { font-size:.85rem; color:var(--muted); margin:10px 0 24px; }
+  #err { min-height:1.2em; font-size:.9rem; color:var(--err); margin:-12px 0 12px; }
+  button { width:100%; padding:16px; border:0; border-radius:12px; background:var(--accent); color:var(--bg);
+           font-size:1.05rem; font-weight:600; cursor:pointer; }
+  button:focus-visible { outline:3px solid var(--ink); outline-offset:3px; }
+  button:disabled { opacity:.5; cursor:default; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pay</h1>
+  <p class="sub">Enter an amount. You will pay on Stripe’s secure page with Apple Pay, Google Pay or card.</p>
+  <label for="amount">Amount</label>
+  <div class="field"><span>$</span><input id="amount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" autofocus></div>
+  <div class="hint">From $0.50 to $1,000 USD</div>
+  <div id="err" role="alert"></div>
+  <button id="pay">Continue to payment</button>
+</main>
+<script>
+  const input = document.getElementById("amount");
+  const err = document.getElementById("err");
+  const btn = document.getElementById("pay");
+
+  async function pay() {
+    err.textContent = "";
+    const amount = parseFloat(input.value.replace(",", "."));
+    if (!isFinite(amount) || amount < 0.5 || amount > 1000) {
+      err.textContent = "Enter an amount between $0.50 and $1,000.";
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const r = await fetch("/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Something went wrong");
+      location.href = data.url;
+    } catch (e) {
+      err.textContent = e.message;
+      btn.disabled = false;
+    }
+  }
+  btn.addEventListener("click", pay);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") pay(); });
+</script>
+</body>
+</html>
